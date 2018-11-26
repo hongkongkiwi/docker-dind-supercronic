@@ -27,7 +27,8 @@ RUN echo "Installing Global Dependencies" && \
     apk add --update --no-cache $(cat "/tmp/apk-packages.txt" | tr '\n' ' ')
 
 # install supercronic
-RUN apk add --no-cache -t .supercronic ca-certificates curl && \
+RUN echo "Installing Build Dependencies" && \
+    apk add --no-cache -t .supercronic ca-certificates curl sed && \
     echo "Finding Latest Supercronic Version..." && \
     SUPERCRONIC_REPO_JSON=`curl -s "https://api.github.com/repos/$SUPERCRONIC_REPO/releases/latest" | jq -c '.assets[] | select(.name | contains("'$SUPERCRONIC_ARCH'"))'` && \
     SUPERCRONIC_URL=`echo "$SUPERCRONIC_REPO_JSON" | jq -r '.browser_download_url'` && \
