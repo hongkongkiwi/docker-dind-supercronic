@@ -22,9 +22,11 @@ ENV SUPERCRONIC_PACKAGE="" \
 
 COPY ./locale.txt /tmp/locale.txt
 COPY ./apk-packages.txt /tmp/apk-packages.txt
+COPY ./docker-entrypoint.sh /docker-entrypoint.sh
 
 RUN echo "Installing Global Dependencies" && \
-    apk add --update --no-cache $(cat "/tmp/apk-packages.txt" | tr '\n' ' ')
+    apk add --update --no-cache $(cat "/tmp/apk-packages.txt" | tr '\n' ' ') && \
+    chmod +x /docker-entrypoint.sh
 
 # install supercronic
 RUN echo "Installing Build Dependencies" && \
@@ -89,5 +91,5 @@ RUN echo "Cleaning Up..." && \
 
 VOLUME ["/etc/crontabs"]
 
-ENTRYPOINT ["supercronic"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["/etc/crontabs/crontab"]
