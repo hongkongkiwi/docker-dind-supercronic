@@ -94,4 +94,4 @@ RUN echo "Cleaning Up..." && \
 VOLUME ["/etc/crontabs"]
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["/etc/crontabs/crontab"]
+CMD ["/bin/supercronic", "/etc/crontabs/crontab"]
