@@ -1,14 +1,12 @@
 FROM docker:stable-dind
 
-ENV SUPERCRONIC_ARCH="amd64" \
-    SUPERCRONIC_SHA1SUM=96960ba3207756bb01e6892c978264e5362e117e \
-    SUPERCRONIC_REPO="aptible/supercronic" \
-    DOCKER_COMPOSE_ARCH="x86_64" \
-    DOCKER_COMPOSE_REPO="docker/compose" \
-    ALPINE_GLIBC_BASE_URL="https://github.com/sgerrand/alpine-pkg-glibc/releases/download" \
-    ALPINE_GLIBC_PACKAGE_VERSION="2.28-r0" \
-    LANG=en_US.UTF-8 \
-    LANGUAGE=en_US.UTF-8
+ARG SUPERCRONIC_ARCH="amd64"
+ARG SUPERCRONIC_REPO="aptible/supercronic"
+ARG DOCKER_COMPOSE_ARCH="x86_64"
+ARG DOCKER_COMPOSE_REPO="docker/compose"
+ARG ALPINE_GLIBC_PACKAGE_VERSION="2.28-r0"
+ARG ALPINE_GLIBC_REPO="sgerrand/alpine-pkg-glibc"
+ARG LANG=en_US.UTF-8
 
 ENV SUPERCRONIC_PACKAGE="" \
     SUPERCRONIC_URL="" \
@@ -22,10 +20,11 @@ ENV SUPERCRONIC_PACKAGE="" \
     ALPINE_GLIBC_BIN_PACKAGE_FILENAME="glibc-bin-$ALPINE_GLIBC_PACKAGE_VERSION.apk" \
     ALPINE_GLIBC_I18N_PACKAGE_FILENAME="glibc-i18n-$ALPINE_GLIBC_PACKAGE_VERSION.apk"
 
-COPY ./locale.md /locale.md
+COPY ./locale.txt /tmp/locale.txt
+COPY ./apk-packages.txt /tmp/apk-packages.txt
 
 RUN echo "Installing Global Dependencies" && \
-    apk add --update --no-cache jq bash
+    apk add --update --no-cache $(cat "/tmp/apk-packages.txt" | tr '\n' ' ')
 
 # install supercronic
 RUN apk add --no-cache -t .supercronic ca-certificates curl && \
@@ -54,17 +53,17 @@ RUN echo "Downloading glibc (docker-compose dependency)..." && \
         Zvo9GI2e2MaZyo9/lvb+LbLEJZKEQckqRj4P26gmASrZEPStwc+yqy1ShHLA0j6m\
         1QIDAQAB\
         -----END PUBLIC KEY-----" | sed 's/   */\n/g' > "/etc/apk/keys/sgerrand.rsa.pub" && \
-    curl -fsSLO "$ALPINE_GLIBC_BASE_URL/$ALPINE_GLIBC_PACKAGE_VERSION/$ALPINE_GLIBC_BASE_PACKAGE_FILENAME" && \
-    curl -fsSLO "$ALPINE_GLIBC_BASE_URL/$ALPINE_GLIBC_PACKAGE_VERSION/$ALPINE_GLIBC_BIN_PACKAGE_FILENAME" && \
-    curl -fsSLO "$ALPINE_GLIBC_BASE_URL/$ALPINE_GLIBC_PACKAGE_VERSION/$ALPINE_GLIBC_I18N_PACKAGE_FILENAME" && \
+    curl -fsSLO "https://github.com/${ALPINE_GLIBC_REPO}/releases/download/$ALPINE_GLIBC_PACKAGE_VERSION/$ALPINE_GLIBC_BASE_PACKAGE_FILENAME" && \
+    curl -fsSLO "https://github.com/${ALPINE_GLIBC_REPO}/releases/download/$ALPINE_GLIBC_PACKAGE_VERSION/$ALPINE_GLIBC_BIN_PACKAGE_FILENAME" && \
+    curl -fsSLO "https://github.com/${ALPINE_GLIBC_REPO}/releases/download/$ALPINE_GLIBC_PACKAGE_VERSION/$ALPINE_GLIBC_I18N_PACKAGE_FILENAME" && \
     echo "Installing glibc $ALPINE_GLIBC_PACKAGE_VERSION" && \
     apk add --no-cache \
         "$ALPINE_GLIBC_BASE_PACKAGE_FILENAME" \
         "$ALPINE_GLIBC_BIN_PACKAGE_FILENAME" \
         "$ALPINE_GLIBC_I18N_PACKAGE_FILENAME" && \
-    cat /locale.md | xargs -i /usr/glibc-compat/bin/localedef -i {} -f UTF-8 {}.UTF-8 && \
+    cat "/tmp/locale.txt" | xargs -i /usr/glibc-compat/bin/localedef -i {} -f UTF-8 {}.UTF-8 && \
     #/usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 "$LANG" || true && \
-    echo "export LANG=$LANG; export LANGUAGE=$LANGUAGE" > /etc/profile.d/locale.sh
+    echo "export LANG=$LANG; export LANGUAGE=$LANG" > /etc/profile.d/locale.sh
 
 RUN echo "Finding Latest Docker Compose Version..." && \
     DOCKER_COMPOSE_REPO_JSON=`curl -s "https://api.github.com/repos/$DOCKER_COMPOSE_REPO/releases/latest" | jq -c '.assets[] | select(.name == "docker-compose-Linux-'$DOCKER_COMPOSE_ARCH'")'` && \
@@ -79,8 +78,7 @@ RUN echo "Finding Latest Docker Compose Version..." && \
 
 # Clean up
 RUN echo "Cleaning Up..." && \
-    rm "/locale.md" \
-       "/etc/apk/keys/sgerrand.rsa.pub" \
+    rm "/etc/apk/keys/sgerrand.rsa.pub" \
        "$ALPINE_GLIBC_BASE_PACKAGE_FILENAME" \
        "$ALPINE_GLIBC_BIN_PACKAGE_FILENAME" \
        "$ALPINE_GLIBC_I18N_PACKAGE_FILENAME" && \
